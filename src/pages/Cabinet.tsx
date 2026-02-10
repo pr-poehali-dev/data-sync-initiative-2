@@ -48,11 +48,16 @@ const Cabinet = () => {
 
       if (difference > 0) {
         const totalSeconds = Math.floor(difference / 1000);
-        const calculatedBalance = totalSeconds * coefficient;
-        setBalance(calculatedBalance);
-        localStorage.setItem(`balance_user${id}`, calculatedBalance.toString());
+        const timerBalance = totalSeconds * coefficient;
+        
+        const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
+        const finalBalance = manualBalance ? parseFloat(manualBalance) + timerBalance : timerBalance;
+        
+        setBalance(finalBalance);
+        localStorage.setItem(`balance_user${id}`, finalBalance.toString());
       } else {
-        setBalance(0);
+        const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
+        setBalance(manualBalance ? parseFloat(manualBalance) : 0);
       }
     }, 1000);
 

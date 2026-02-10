@@ -19,6 +19,8 @@ const Admin = () => {
     seconds: 0,
   });
   const [coefficients, setCoefficients] = useState<{ [key: number]: number }>({});
+  const [selectedUserForTopup, setSelectedUserForTopup] = useState<number | null>(null);
+  const [topupAmount, setTopupAmount] = useState<string>('');
 
   useEffect(() => {
     const loadedCoefficients: { [key: number]: number } = {};
@@ -79,6 +81,32 @@ const Admin = () => {
       return parseFloat(savedBalance).toFixed(2);
     }
     return '0.00';
+  };
+
+  const handleTopupBalance = (userId: number) => {
+    const amount = parseFloat(topupAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите корректную сумму',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const currentBalance = parseFloat(getUserBalance(userId));
+    const newBalance = currentBalance + amount;
+    
+    localStorage.setItem(`balance_user${userId}`, newBalance.toString());
+    localStorage.setItem(`manual_balance_user${userId}`, newBalance.toString());
+    
+    toast({
+      title: 'Баланс пополнен',
+      description: `+${amount} ₽ для пользователя ${userId}. Новый баланс: ${newBalance.toFixed(2)} ₽`,
+    });
+
+    setSelectedUserForTopup(null);
+    setTopupAmount('');
   };
 
   const getUserTimer = (userId: number) => {
@@ -214,11 +242,44 @@ const Admin = () => {
                               </Button>
                             </div>
                           </div>
+                        ) : selectedUserForTopup === userId ? (
+                          <div className="space-y-2">
+                            <div>
+                              <Label className="text-xs">Сумма пополнения (₽)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={topupAmount}
+                                onChange={(e) => setTopupAmount(e.target.value)}
+                                placeholder="100.00"
+                                className="h-8"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => handleTopupBalance(userId)} className="flex-1">
+                                <Icon name="Plus" size={14} className="mr-1" />
+                                Пополнить
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                setSelectedUserForTopup(null);
+                                setTopupAmount('');
+                              }}>
+                                <Icon name="X" size={14} />
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={() => setSelectedUser(userId)} className="w-full">
-                            <Icon name="Clock" size={14} className="mr-2" />
-                            Установить таймер
-                          </Button>
+                          <div className="space-y-2">
+                            <Button size="sm" variant="outline" onClick={() => setSelectedUser(userId)} className="w-full">
+                              <Icon name="Clock" size={14} className="mr-2" />
+                              Установить таймер
+                            </Button>
+                            <Button size="sm" variant="default" onClick={() => setSelectedUserForTopup(userId)} className="w-full">
+                              <Icon name="Wallet" size={14} className="mr-2" />
+                              Пополнить баланс
+                            </Button>
+                          </div>
                         )}
                       </CardContent>
                     </Card>
