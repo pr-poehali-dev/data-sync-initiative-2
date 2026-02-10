@@ -9,6 +9,8 @@ const Cabinet = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [timerDate, setTimerDate] = useState<Date | null>(null);
+  const [balance, setBalance] = useState<number>(0);
+  const [coefficient, setCoefficient] = useState<number>(1);
   const username = localStorage.getItem('username');
 
   useEffect(() => {
@@ -20,12 +22,42 @@ const Cabinet = () => {
       return;
     }
 
-    // Загружаем таймер из localStorage
     const savedTimer = localStorage.getItem(`timer_user${id}`);
     if (savedTimer) {
       setTimerDate(new Date(savedTimer));
     }
+
+    const savedBalance = localStorage.getItem(`balance_user${id}`);
+    if (savedBalance) {
+      setBalance(parseFloat(savedBalance));
+    }
+
+    const savedCoefficient = localStorage.getItem(`coefficient_user${id}`);
+    if (savedCoefficient) {
+      setCoefficient(parseFloat(savedCoefficient));
+    }
   }, [id, navigate]);
+
+  useEffect(() => {
+    if (!timerDate) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const target = new Date(timerDate).getTime();
+      const difference = target - now;
+
+      if (difference > 0) {
+        const totalSeconds = Math.floor(difference / 1000);
+        const calculatedBalance = totalSeconds * coefficient;
+        setBalance(calculatedBalance);
+        localStorage.setItem(`balance_user${id}`, calculatedBalance.toString());
+      } else {
+        setBalance(0);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerDate, coefficient, id]);
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
@@ -49,6 +81,24 @@ const Cabinet = () => {
         </div>
 
         <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="Wallet" size={24} />
+                Баланс
+              </CardTitle>
+              <CardDescription>Ваши внесённые средства</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-5xl font-bold text-primary">
+                {balance.toFixed(2)} ₽
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Формула: Баланс = Секунды × {coefficient}
+              </p>
+            </CardContent>
+          </Card>
+
           {timerDate ? (
             <Timer targetDate={timerDate} title="Ваш таймер" />
           ) : (
@@ -75,6 +125,10 @@ const Cabinet = () => {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">ID пользователя:</span>
                 <span className="font-medium">{id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Коэффициент:</span>
+                <span className="font-medium">{coefficient}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Статус:</span>

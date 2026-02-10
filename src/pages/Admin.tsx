@@ -18,6 +18,16 @@ const Admin = () => {
     minutes: 0,
     seconds: 0,
   });
+  const [coefficients, setCoefficients] = useState<{ [key: number]: number }>({});
+
+  useEffect(() => {
+    const loadedCoefficients: { [key: number]: number } = {};
+    for (let i = 1; i <= 20; i++) {
+      const savedCoeff = localStorage.getItem(`coefficient_user${i}`);
+      loadedCoefficients[i] = savedCoeff ? parseFloat(savedCoeff) : 1;
+    }
+    setCoefficients(loadedCoefficients);
+  }, []);
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -51,6 +61,24 @@ const Admin = () => {
 
     setSelectedUser(null);
     setTimerSettings({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  };
+
+  const handleSetCoefficient = (userId: number, coefficient: number) => {
+    localStorage.setItem(`coefficient_user${userId}`, coefficient.toString());
+    setCoefficients({ ...coefficients, [userId]: coefficient });
+    
+    toast({
+      title: 'Коэффициент установлен',
+      description: `Коэффициент для пользователя ${userId}: ${coefficient}`,
+    });
+  };
+
+  const getUserBalance = (userId: number) => {
+    const savedBalance = localStorage.getItem(`balance_user${userId}`);
+    if (savedBalance) {
+      return parseFloat(savedBalance).toFixed(2);
+    }
+    return '0.00';
   };
 
   const getUserTimer = (userId: number) => {
@@ -104,8 +132,10 @@ const Admin = () => {
                     <Card key={userId} className="border-2">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Пользователь {userId}</CardTitle>
-                        <CardDescription className="text-xs">
-                          Таймер: {getUserTimer(userId)}
+                        <CardDescription className="text-xs space-y-1">
+                          <div>Таймер: {getUserTimer(userId)}</div>
+                          <div>Баланс: {getUserBalance(userId)} ₽</div>
+                          <div>Коэф: {coefficients[userId] || 1}</div>
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2">
@@ -163,6 +193,16 @@ const Admin = () => {
                                   className="h-8"
                                 />
                               </div>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Коэффициент (руб/сек)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={coefficients[userId] || 1}
+                                onChange={(e) => handleSetCoefficient(userId, parseFloat(e.target.value) || 1)}
+                                className="h-8"
+                              />
                             </div>
                             <div className="flex gap-2">
                               <Button size="sm" onClick={() => handleSetTimer(userId)} className="flex-1">
