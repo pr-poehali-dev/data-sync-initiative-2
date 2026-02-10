@@ -17,6 +17,7 @@ const Cabinet = () => {
   const [timerDate, setTimerDate] = useState<Date | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [coefficient, setCoefficient] = useState<number>(1);
+  const [calculatedTimerDate, setCalculatedTimerDate] = useState<Date | null>(null);
   const [topupHistory, setTopupHistory] = useState<TopupHistoryEntry[]>([]);
   const username = localStorage.getItem('username');
 
@@ -51,30 +52,44 @@ const Cabinet = () => {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!timerDate) return;
+    const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
+    const manualBalanceValue = manualBalance ? parseFloat(manualBalance) : 0;
+    
+    setBalance(manualBalanceValue);
+    
+    if (coefficient > 0 && manualBalanceValue > 0) {
+      const totalMinutes = manualBalanceValue / coefficient;
+      const totalMilliseconds = totalMinutes * 60 * 1000;
+      const newTimerDate = new Date(Date.now() + totalMilliseconds);
+      setCalculatedTimerDate(newTimerDate);
+      localStorage.setItem(`timer_user${id}`, newTimerDate.toISOString());
+    } else {
+      setCalculatedTimerDate(null);
+    }
+  }, [coefficient, id]);
+
+  useEffect(() => {
+    if (!calculatedTimerDate || coefficient <= 0) return;
 
     const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const target = new Date(timerDate).getTime();
+      const now = Date.now();
+      const target = new Date(calculatedTimerDate).getTime();
       const difference = target - now;
 
       if (difference > 0) {
-        const totalMinutes = Math.floor(difference / 1000 / 60);
-        const timerBalance = totalMinutes * coefficient;
-        
-        const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
-        const finalBalance = manualBalance ? parseFloat(manualBalance) + timerBalance : timerBalance;
-        
-        setBalance(finalBalance);
-        localStorage.setItem(`balance_user${id}`, finalBalance.toString());
+        const totalMinutes = difference / 1000 / 60;
+        const currentBalance = totalMinutes * coefficient;
+        setBalance(currentBalance);
+        localStorage.setItem(`balance_user${id}`, currentBalance.toString());
       } else {
-        const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
-        setBalance(manualBalance ? parseFloat(manualBalance) : 0);
+        setBalance(0);
+        localStorage.setItem(`balance_user${id}`, '0');
+        setCalculatedTimerDate(null);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerDate, coefficient, id]);
+  }, [calculatedTimerDate, coefficient, id]);
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
@@ -113,11 +128,16 @@ const Cabinet = () => {
               <p className="text-sm text-muted-foreground mt-2">
                 Формула: Баланс = Минуты × {coefficient} ₽/мин
               </p>
+              {calculatedTimerDate && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Осталось времени: {Math.floor((new Date(calculatedTimerDate).getTime() - Date.now()) / 1000 / 60)} мин
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          {timerDate ? (
-            <Timer targetDate={timerDate} title="Ваш таймер" />
+          {calculatedTimerDate ? (
+            <Timer targetDate={calculatedTimerDate} title="Ваш таймер" />
           ) : (
             <Card>
               <CardHeader>
