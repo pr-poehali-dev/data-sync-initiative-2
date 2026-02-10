@@ -5,12 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Timer from '@/components/Timer';
 import Icon from '@/components/ui/icon';
 
+interface TopupHistoryEntry {
+  date: string;
+  amount: number;
+  admin: string;
+}
+
 const Cabinet = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [timerDate, setTimerDate] = useState<Date | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [coefficient, setCoefficient] = useState<number>(1);
+  const [topupHistory, setTopupHistory] = useState<TopupHistoryEntry[]>([]);
   const username = localStorage.getItem('username');
 
   useEffect(() => {
@@ -36,6 +43,11 @@ const Cabinet = () => {
     if (savedCoefficient) {
       setCoefficient(parseFloat(savedCoefficient));
     }
+
+    const savedHistory = localStorage.getItem(`topup_history_user${id}`);
+    if (savedHistory) {
+      setTopupHistory(JSON.parse(savedHistory));
+    }
   }, [id, navigate]);
 
   useEffect(() => {
@@ -47,8 +59,8 @@ const Cabinet = () => {
       const difference = target - now;
 
       if (difference > 0) {
-        const totalSeconds = Math.floor(difference / 1000);
-        const timerBalance = totalSeconds * coefficient;
+        const totalMinutes = Math.floor(difference / 1000 / 60);
+        const timerBalance = totalMinutes * coefficient;
         
         const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
         const finalBalance = manualBalance ? parseFloat(manualBalance) + timerBalance : timerBalance;
@@ -99,7 +111,7 @@ const Cabinet = () => {
                 {balance.toFixed(2)} ₽
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                Формула: Баланс = Секунды × {coefficient}
+                Формула: Баланс = Минуты × {coefficient} ₽/мин
               </p>
             </CardContent>
           </Card>
@@ -133,7 +145,7 @@ const Cabinet = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Коэффициент:</span>
-                <span className="font-medium">{coefficient}</span>
+                <span className="font-medium">{coefficient} ₽/мин</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Статус:</span>
@@ -141,6 +153,40 @@ const Cabinet = () => {
               </div>
             </CardContent>
           </Card>
+
+          {topupHistory.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="History" size={20} />
+                  История пополнений
+                </CardTitle>
+                <CardDescription>Все пополнения баланса</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {topupHistory.slice().reverse().map((entry, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2 rounded-full">
+                          <Icon name="Plus" size={16} className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">+{entry.amount.toFixed(2)} ₽</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(entry.date).toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entry.admin}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

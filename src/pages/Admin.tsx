@@ -71,7 +71,7 @@ const Admin = () => {
     
     toast({
       title: 'Коэффициент установлен',
-      description: `Коэффициент для пользователя ${userId}: ${coefficient}`,
+      description: `Коэффициент для пользователя ${userId}: ${coefficient} ₽/мин`,
     });
   };
 
@@ -94,15 +94,27 @@ const Admin = () => {
       return;
     }
 
-    const currentBalance = parseFloat(getUserBalance(userId));
-    const newBalance = currentBalance + amount;
+    const manualBalance = localStorage.getItem(`manual_balance_user${userId}`);
+    const currentManualBalance = manualBalance ? parseFloat(manualBalance) : 0;
+    const newManualBalance = currentManualBalance + amount;
     
-    localStorage.setItem(`balance_user${userId}`, newBalance.toString());
-    localStorage.setItem(`manual_balance_user${userId}`, newBalance.toString());
+    localStorage.setItem(`manual_balance_user${userId}`, newManualBalance.toString());
+    
+    const historyKey = `topup_history_user${userId}`;
+    const existingHistory = localStorage.getItem(historyKey);
+    const history = existingHistory ? JSON.parse(existingHistory) : [];
+    
+    history.push({
+      date: new Date().toISOString(),
+      amount: amount,
+      admin: localStorage.getItem('username') || 'admin',
+    });
+    
+    localStorage.setItem(historyKey, JSON.stringify(history));
     
     toast({
       title: 'Баланс пополнен',
-      description: `+${amount} ₽ для пользователя ${userId}. Новый баланс: ${newBalance.toFixed(2)} ₽`,
+      description: `+${amount} ₽ для пользователя ${userId}`,
     });
 
     setSelectedUserForTopup(null);
@@ -223,7 +235,7 @@ const Admin = () => {
                               </div>
                             </div>
                             <div>
-                              <Label className="text-xs">Коэффициент (руб/сек)</Label>
+                              <Label className="text-xs">Коэффициент (руб/мин)</Label>
                               <Input
                                 type="number"
                                 step="0.01"
