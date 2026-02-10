@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Timer from '@/components/Timer';
 import Icon from '@/components/ui/icon';
 
@@ -19,6 +21,9 @@ const Cabinet = () => {
   const [coefficient, setCoefficient] = useState<number>(1);
   const [calculatedTimerDate, setCalculatedTimerDate] = useState<Date | null>(null);
   const [topupHistory, setTopupHistory] = useState<TopupHistoryEntry[]>([]);
+  const [email, setEmail] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [notificationSent, setNotificationSent] = useState<boolean>(false);
   const username = localStorage.getItem('username');
 
   useEffect(() => {
@@ -48,6 +53,16 @@ const Cabinet = () => {
     const savedHistory = localStorage.getItem(`topup_history_user${id}`);
     if (savedHistory) {
       setTopupHistory(JSON.parse(savedHistory));
+    }
+
+    const savedEmail = localStorage.getItem(`email_user${id}`);
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+
+    const savedPhone = localStorage.getItem(`phone_user${id}`);
+    if (savedPhone) {
+      setPhone(savedPhone);
     }
   }, [id, navigate]);
 
@@ -81,6 +96,17 @@ const Cabinet = () => {
         const currentBalance = totalMinutes * coefficient;
         setBalance(currentBalance);
         localStorage.setItem(`balance_user${id}`, currentBalance.toString());
+
+        if (currentBalance < 1000 && !notificationSent && (email || phone)) {
+          sendNotification(currentBalance);
+          setNotificationSent(true);
+          localStorage.setItem(`notification_sent_user${id}`, 'true');
+        }
+
+        if (currentBalance >= 1000 && notificationSent) {
+          setNotificationSent(false);
+          localStorage.removeItem(`notification_sent_user${id}`);
+        }
       } else {
         setBalance(0);
         localStorage.setItem(`balance_user${id}`, '0');
@@ -90,6 +116,30 @@ const Cabinet = () => {
 
     return () => clearInterval(interval);
   }, [calculatedTimerDate, coefficient, id]);
+
+  const sendNotification = async (currentBalance: number) => {
+    try {
+      await fetch('https://functions.poehali.dev/2c3a82fb-8150-45ce-a65b-b8811b50095c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: id,
+          username,
+          balance: currentBalance,
+          email,
+          phone
+        })
+      });
+    } catch (error) {
+      console.error('Ошибка отправки уведомления:', error);
+    }
+  };
+
+  const handleSaveContacts = () => {
+    localStorage.setItem(`email_user${id}`, email);
+    localStorage.setItem(`phone_user${id}`, phone);
+    alert('Контакты сохранены!');
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
@@ -153,6 +203,52 @@ const Cabinet = () => {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="Bell" size={20} />
+                Уведомления о балансе
+              </CardTitle>
+              <CardDescription>
+                Получайте уведомления когда баланс меньше 1000₽
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="example@mail.ru"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Телефон</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+7 (999) 123-45-67"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleSaveContacts} className="w-full">
+                <Icon name="Save" size={16} className="mr-2" />
+                Сохранить контакты
+              </Button>
+              {balance < 1000 && balance > 0 && (
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-2">
+                  <Icon name="AlertTriangle" size={16} className="text-yellow-600 mt-0.5" />
+                  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>Внимание!</strong> Ваш баланс ниже 1000₽
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "Test notification sending with email",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "userId": "1",
+        "username": "TestUser",
+        "balance": 500,
+        "email": "test@example.com",
+        "phone": "+79991234567"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test OPTIONS method for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}
