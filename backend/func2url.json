@@ -1,4 +1,5 @@
 {
+  "timer-manager": "https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233",
   "upload-company-images": "https://functions.poehali.dev/8b75370e-8a14-4f88-a342-2e1a9f27917c",
   "crypto-payment": "https://functions.poehali.dev/a106fc6e-84f1-4795-bbbb-d084546823b8",
   "generate-invoice": "https://functions.poehali.dev/14b5b0ca-60b8-4288-b32a-28527b754694",

@@ -35,20 +35,47 @@ const Cabinet = () => {
       return;
     }
 
-    const savedTimer = localStorage.getItem(`timer_user${id}`);
-    if (savedTimer) {
-      setTimerDate(new Date(savedTimer));
-    }
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch(`https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233?user_id=${id}`);
+        const data = await response.json();
+        
+        if (data.balance !== null && data.balance !== undefined) {
+          setBalance(data.balance);
+        }
+        if (data.coefficient !== null && data.coefficient !== undefined) {
+          setCoefficient(data.coefficient);
+        }
+        if (data.timer_end_date) {
+          setCalculatedTimerDate(new Date(data.timer_end_date));
+        }
+        if (data.email) {
+          setEmail(data.email);
+        }
+        if (data.phone) {
+          setPhone(data.phone);
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+        
+        const savedTimer = localStorage.getItem(`timer_user${id}`);
+        if (savedTimer) {
+          setTimerDate(new Date(savedTimer));
+        }
 
-    const savedBalance = localStorage.getItem(`balance_user${id}`);
-    if (savedBalance) {
-      setBalance(parseFloat(savedBalance));
-    }
+        const savedBalance = localStorage.getItem(`balance_user${id}`);
+        if (savedBalance) {
+          setBalance(parseFloat(savedBalance));
+        }
 
-    const savedCoefficient = localStorage.getItem(`coefficient_user${id}`);
-    if (savedCoefficient) {
-      setCoefficient(parseFloat(savedCoefficient));
-    }
+        const savedCoefficient = localStorage.getItem(`coefficient_user${id}`);
+        if (savedCoefficient) {
+          setCoefficient(parseFloat(savedCoefficient));
+        }
+      }
+    };
+
+    fetchUserData();
 
     const savedHistory = localStorage.getItem(`topup_history_user${id}`);
     if (savedHistory) {
@@ -64,24 +91,12 @@ const Cabinet = () => {
     if (savedPhone) {
       setPhone(savedPhone);
     }
+
+    const interval = setInterval(fetchUserData, 30000);
+    return () => clearInterval(interval);
   }, [id, navigate]);
 
-  useEffect(() => {
-    const manualBalance = localStorage.getItem(`manual_balance_user${id}`);
-    const manualBalanceValue = manualBalance ? parseFloat(manualBalance) : 0;
-    
-    setBalance(manualBalanceValue);
-    
-    if (coefficient > 0 && manualBalanceValue > 0) {
-      const totalMinutes = manualBalanceValue / coefficient;
-      const totalMilliseconds = totalMinutes * 60 * 1000;
-      const newTimerDate = new Date(Date.now() + totalMilliseconds);
-      setCalculatedTimerDate(newTimerDate);
-      localStorage.setItem(`timer_user${id}`, newTimerDate.toISOString());
-    } else {
-      setCalculatedTimerDate(null);
-    }
-  }, [coefficient, id]);
+
 
   useEffect(() => {
     if (!calculatedTimerDate || coefficient <= 0) return;
@@ -95,7 +110,6 @@ const Cabinet = () => {
         const totalMinutes = difference / 1000 / 60;
         const currentBalance = totalMinutes * coefficient;
         setBalance(currentBalance);
-        localStorage.setItem(`balance_user${id}`, currentBalance.toString());
 
         if (currentBalance < 1000 && !notificationSent && (email || phone)) {
           sendNotification(currentBalance);
@@ -109,7 +123,6 @@ const Cabinet = () => {
         }
       } else {
         setBalance(0);
-        localStorage.setItem(`balance_user${id}`, '0');
         setCalculatedTimerDate(null);
       }
     }, 1000);

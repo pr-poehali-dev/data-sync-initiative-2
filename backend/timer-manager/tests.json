@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get all users",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create user",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "create_user",
+        "username": "test_user",
+        "email": "test@example.com"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "username": "test_user",
+        "email": "test@example.com"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

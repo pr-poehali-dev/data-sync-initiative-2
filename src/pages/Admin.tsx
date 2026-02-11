@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TimersOverview from '@/components/admin/TimersOverview';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -44,25 +45,46 @@ const Admin = () => {
     navigate('/');
   };
 
-  const handleSetTimer = (userId: number) => {
-    const now = new Date();
-    const targetDate = new Date(
-      now.getTime() +
-        timerSettings.days * 24 * 60 * 60 * 1000 +
-        timerSettings.hours * 60 * 60 * 1000 +
-        timerSettings.minutes * 60 * 1000 +
-        timerSettings.seconds * 1000
-    );
+  const handleSetTimer = async (userId: number) => {
+    const totalMinutes = 
+      timerSettings.days * 24 * 60 +
+      timerSettings.hours * 60 +
+      timerSettings.minutes +
+      timerSettings.seconds / 60;
 
-    localStorage.setItem(`timer_user${userId}`, targetDate.toISOString());
-    
-    toast({
-      title: 'Таймер установлен',
-      description: `Таймер для пользователя ${userId} успешно установлен`,
-    });
+    const balance = totalMinutes * (coefficients[userId] || 1);
 
-    setSelectedUser(null);
-    setTimerSettings({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    try {
+      const response = await fetch('https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start_timer',
+          user_id: userId,
+          balance: balance,
+          coefficient: coefficients[userId] || 1
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Таймер установлен',
+          description: `Таймер для пользователя ${userId} успешно установлен`,
+        });
+
+        setSelectedUser(null);
+        setTimerSettings({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        throw new Error('Ошибка установки таймера');
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось установить таймер',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
   };
 
   const handleSetCoefficient = (userId: number, coefficient: number) => {
@@ -83,7 +105,7 @@ const Admin = () => {
     return '0.00';
   };
 
-  const handleTopupBalance = (userId: number) => {
+  const handleTopupBalance = async (userId: number) => {
     const amount = parseFloat(topupAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({
@@ -94,31 +116,54 @@ const Admin = () => {
       return;
     }
 
-    const manualBalance = localStorage.getItem(`manual_balance_user${userId}`);
-    const currentManualBalance = manualBalance ? parseFloat(manualBalance) : 0;
-    const newManualBalance = currentManualBalance + amount;
-    
-    localStorage.setItem(`manual_balance_user${userId}`, newManualBalance.toString());
-    
-    const historyKey = `topup_history_user${userId}`;
-    const existingHistory = localStorage.getItem(historyKey);
-    const history = existingHistory ? JSON.parse(existingHistory) : [];
-    
-    history.push({
-      date: new Date().toISOString(),
-      amount: amount,
-      admin: localStorage.getItem('username') || 'admin',
-    });
-    
-    localStorage.setItem(historyKey, JSON.stringify(history));
-    
-    toast({
-      title: 'Баланс пополнен',
-      description: `+${amount} ₽ для пользователя ${userId}`,
-    });
+    try {
+      const response = await fetch('https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_balance',
+          user_id: userId,
+          amount: amount,
+          admin_name: localStorage.getItem('username') || 'admin'
+        })
+      });
 
-    setSelectedUserForTopup(null);
-    setTopupAmount('');
+      if (response.ok) {
+        const manualBalance = localStorage.getItem(`manual_balance_user${userId}`);
+        const currentManualBalance = manualBalance ? parseFloat(manualBalance) : 0;
+        const newManualBalance = currentManualBalance + amount;
+        localStorage.setItem(`manual_balance_user${userId}`, newManualBalance.toString());
+        
+        const historyKey = `topup_history_user${userId}`;
+        const existingHistory = localStorage.getItem(historyKey);
+        const history = existingHistory ? JSON.parse(existingHistory) : [];
+        
+        history.push({
+          date: new Date().toISOString(),
+          amount: amount,
+          admin: localStorage.getItem('username') || 'admin',
+        });
+        
+        localStorage.setItem(historyKey, JSON.stringify(history));
+        
+        toast({
+          title: 'Баланс пополнен',
+          description: `+${amount} ₽ для пользователя ${userId}`,
+        });
+
+        setSelectedUserForTopup(null);
+        setTopupAmount('');
+      } else {
+        throw new Error('Ошибка пополнения');
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось пополнить баланс',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
   };
 
   const getUserTimer = (userId: number) => {
@@ -161,11 +206,16 @@ const Admin = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+        <Tabs defaultValue="timers" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsTrigger value="timers">Таймеры</TabsTrigger>
             <TabsTrigger value="users">Пользователи</TabsTrigger>
             <TabsTrigger value="settings">Настройки</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="timers" className="space-y-4">
+            <TimersOverview />
+          </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
             <Card>
