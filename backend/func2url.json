@@ -1,3 +1,5 @@
 {
+  "crypto-payment": "https://functions.poehali.dev/a106fc6e-84f1-4795-bbbb-d084546823b8",
+  "generate-invoice": "https://functions.poehali.dev/14b5b0ca-60b8-4288-b32a-28527b754694",
   "send-notification": "https://functions.poehali.dev/2c3a82fb-8150-45ce-a65b-b8811b50095c"
 }

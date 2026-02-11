@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "name": "Generate USDT payment successfully",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "userId": "123",
+        "amount": 5000,
+        "currency": "USDT"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true,
+        "transactionId": "string",
+        "currency": "USDT",
+        "amountRub": 5000
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing required fields",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "currency": "BTC"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
