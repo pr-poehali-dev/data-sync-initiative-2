@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Missing required fields",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid image type",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "type": "invalid",
+        "image": "data:image/png;base64,iVBORw0KGgo="
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

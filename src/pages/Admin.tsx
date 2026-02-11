@@ -154,6 +154,13 @@ const Admin = () => {
           </Button>
         </div>
 
+        <div className="mb-6">
+          <Button onClick={() => navigate('/company-settings')} variant="outline">
+            <Icon name="Settings" size={16} className="mr-2" />
+            Настройки компании (Печать и подпись)
+          </Button>
+        </div>
+
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="users">Пользователи</TabsTrigger>
