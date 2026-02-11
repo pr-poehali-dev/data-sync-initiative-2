@@ -58,12 +58,16 @@ def handler(event: dict, context) -> dict:
         # Данные компании
         company_name = os.environ.get('COMPANY_NAME', 'ООО "Ваша Компания"')
         company_inn = os.environ.get('COMPANY_INN', '1234567890')
-        company_kpp = os.environ.get('COMPANY_KPP', '123401001')
+        company_kpp = os.environ.get('COMPANY_KPP', '772801001')
         company_account = os.environ.get('COMPANY_ACCOUNT', '40702810000000000000')
         company_bank = os.environ.get('COMPANY_BANK', 'ПАО "Сбербанк"')
         company_bik = os.environ.get('COMPANY_BIK', '044525225')
         company_correspondent = os.environ.get('COMPANY_CORRESPONDENT', '30101810400000000225')
         director_name = os.environ.get('DIRECTOR_NAME', 'Иванов И.И.')
+        
+        # URL изображений печати и подписи
+        signature_url = os.environ.get('SIGNATURE_IMAGE_URL', '')
+        stamp_url = os.environ.get('STAMP_IMAGE_URL', '')
         
         # Формируем HTML счёта
         invoice_html = f'''
@@ -132,12 +136,14 @@ def handler(event: dict, context) -> dict:
     
     <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
         <div style="width: 45%;">
-            <p style="margin-bottom: 40px;"><strong>Директор</strong></p>
-            <div style="border-bottom: 1px solid #000; width: 200px; display: inline-block;"></div>
-            <span style="margin-left: 20px;">{director_name}</span>
+            <p style="margin-bottom: 10px;"><strong>Директор</strong></p>
+            {'<img src="' + signature_url + '" alt="Подпись" style="height: 60px; margin-bottom: 10px;" />' if signature_url else '<div style="border-bottom: 1px solid #000; width: 200px; height: 60px; display: inline-block;"></div>'}
+            <div style="margin-top: 5px;">
+                <span>{director_name}</span>
+            </div>
         </div>
         <div style="width: 45%; text-align: right;">
-            <p style="margin-bottom: 10px; color: #666; font-size: 12px;">М.П.</p>
+            {'<img src="' + stamp_url + '" alt="Печать" style="height: 120px;" />' if stamp_url else '<p style="color: #666; font-size: 12px;">М.П.</p>'}
         </div>
     </div>
 </body>
