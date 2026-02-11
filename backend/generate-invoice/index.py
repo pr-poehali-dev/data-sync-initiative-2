@@ -44,17 +44,26 @@ def handler(event: dict, context) -> dict:
                 'body': json.dumps({'error': 'Не указаны обязательные поля: userId, username, amount'})
             }
         
-        # Генерируем номер счёта
-        invoice_number = f"INV-{user_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        # Генерируем номер счёта в формате: текущий_год-порядковый_номер
+        current_year = datetime.now().year
+        invoice_counter_key = f'invoice_counter_{current_year}'
         
-        # Данные компании (заглушки - нужно заменить на реальные)
+        # Получаем счётчик из переменной окружения (в продакшене - из БД)
+        counter = int(os.environ.get(invoice_counter_key, '0')) + 1
+        invoice_number = f"{current_year}-{counter}"
+        
+        # Сохраняем новый счётчик (в продакшене - в БД)
+        os.environ[invoice_counter_key] = str(counter)
+        
+        # Данные компании
         company_name = os.environ.get('COMPANY_NAME', 'ООО "Ваша Компания"')
         company_inn = os.environ.get('COMPANY_INN', '1234567890')
-        company_kpp = os.environ.get('COMPANY_KPP', '123456789')
+        company_kpp = os.environ.get('COMPANY_KPP', '123401001')
         company_account = os.environ.get('COMPANY_ACCOUNT', '40702810000000000000')
         company_bank = os.environ.get('COMPANY_BANK', 'ПАО "Сбербанк"')
         company_bik = os.environ.get('COMPANY_BIK', '044525225')
         company_correspondent = os.environ.get('COMPANY_CORRESPONDENT', '30101810400000000225')
+        director_name = os.environ.get('DIRECTOR_NAME', 'Иванов И.И.')
         
         # Формируем HTML счёта
         invoice_html = f'''
@@ -119,6 +128,17 @@ def handler(event: dict, context) -> dict:
     <div style="margin-top: 40px;">
         <p>Счёт действителен в течение 3 дней с даты выставления.</p>
         <p>После оплаты баланс будет пополнен автоматически.</p>
+    </div>
+    
+    <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div style="width: 45%;">
+            <p style="margin-bottom: 40px;"><strong>Директор</strong></p>
+            <div style="border-bottom: 1px solid #000; width: 200px; display: inline-block;"></div>
+            <span style="margin-left: 20px;">{director_name}</span>
+        </div>
+        <div style="width: 45%; text-align: right;">
+            <p style="margin-bottom: 10px; color: #666; font-size: 12px;">М.П.</p>
+        </div>
     </div>
 </body>
 </html>
