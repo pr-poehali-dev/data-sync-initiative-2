@@ -90,6 +90,20 @@ const CompanySettings = () => {
     alert('URL скопирован в буфер обмена!');
   };
 
+  const handleReload = (type: 'signature' | 'stamp') => {
+    if (type === 'signature') {
+      setSignaturePreview('');
+      setSignatureUrl('');
+      const input = document.getElementById('signature') as HTMLInputElement;
+      if (input) input.value = '';
+    } else {
+      setStampPreview('');
+      setStampUrl('');
+      const input = document.getElementById('stamp') as HTMLInputElement;
+      if (input) input.value = '';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <div className="container mx-auto p-4 md:p-8">
@@ -145,23 +159,34 @@ const CompanySettings = () => {
                 </div>
               )}
 
-              <Button
-                onClick={() => handleUpload('signature')}
-                disabled={!signaturePreview || loading.signature}
-                className="w-full"
-              >
-                {loading.signature ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Загрузка...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Upload" size={16} className="mr-2" />
-                    Загрузить подпись
-                  </>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleUpload('signature')}
+                  disabled={!signaturePreview || loading.signature}
+                  className="flex-1"
+                >
+                  {loading.signature ? (
+                    <>
+                      <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="Upload" size={16} className="mr-2" />
+                      Загрузить подпись
+                    </>
+                  )}
+                </Button>
+                {(signaturePreview || signatureUrl) && (
+                  <Button
+                    onClick={() => handleReload('signature')}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Icon name="RotateCcw" size={16} />
+                  </Button>
                 )}
-              </Button>
+              </div>
 
               {signatureUrl && (
                 <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
@@ -230,23 +255,34 @@ const CompanySettings = () => {
                 </div>
               )}
 
-              <Button
-                onClick={() => handleUpload('stamp')}
-                disabled={!stampPreview || loading.stamp}
-                className="w-full"
-              >
-                {loading.stamp ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Загрузка...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Upload" size={16} className="mr-2" />
-                    Загрузить печать
-                  </>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleUpload('stamp')}
+                  disabled={!stampPreview || loading.stamp}
+                  className="flex-1"
+                >
+                  {loading.stamp ? (
+                    <>
+                      <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="Upload" size={16} className="mr-2" />
+                      Загрузить печать
+                    </>
+                  )}
+                </Button>
+                {(stampPreview || stampUrl) && (
+                  <Button
+                    onClick={() => handleReload('stamp')}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Icon name="RotateCcw" size={16} />
+                  </Button>
                 )}
-              </Button>
+              </div>
 
               {stampUrl && (
                 <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
