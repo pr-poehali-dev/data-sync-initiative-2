@@ -171,6 +171,61 @@ def handler(event: dict, context) -> dict:
                     'body': json.dumps(result)
                 }
             
+            elif action == 'add_balance':
+                user_id = body.get('user_id')
+                amount = float(body.get('amount', 0))
+                admin_name = body.get('admin_name', 'admin')
+                
+                cur.execute('''
+                    SELECT id FROM users WHERE id = %s
+                ''', (user_id,))
+                user = cur.fetchone()
+                
+                if not user:
+                    cur.execute('''
+                        INSERT INTO users (id, username) VALUES (%s, %s)
+                    ''', (user_id, f'user{user_id}'))
+                    conn.commit()
+                
+                cur.execute('''
+                    INSERT INTO topup_history (user_id, amount, admin_name)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, user_id, amount, admin_name, created_at
+                ''', (user_id, amount, admin_name))
+                topup = cur.fetchone()
+                
+                cur.execute('''
+                    SELECT balance, coefficient FROM active_timers 
+                    WHERE user_id = %s AND is_active = TRUE
+                ''', (user_id,))
+                timer = cur.fetchone()
+                
+                if timer:
+                    new_balance = float(timer['balance']) + amount
+                    coefficient = float(timer['coefficient'])
+                    
+                    additional_minutes = amount / coefficient if coefficient > 0 else 0
+                    
+                    cur.execute('''
+                        UPDATE active_timers
+                        SET balance = %s,
+                            timer_end_date = timer_end_date + INTERVAL '%s minutes',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s AND is_active = TRUE
+                    ''', (new_balance, additional_minutes, user_id))
+                
+                conn.commit()
+                
+                result = dict(topup)
+                if result.get('created_at'):
+                    result['created_at'] = result['created_at'].isoformat()
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps(result)
+                }
+            
             elif action == 'start_timer':
                 user_id = body.get('user_id')
                 balance = float(body.get('balance', 0))
