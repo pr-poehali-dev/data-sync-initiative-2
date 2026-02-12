@@ -22,6 +22,14 @@ const Admin = () => {
   const [coefficients, setCoefficients] = useState<{ [key: number]: number }>({});
   const [selectedUserForTopup, setSelectedUserForTopup] = useState<number | null>(null);
   const [topupAmount, setTopupAmount] = useState<string>('');
+  const [topupHistory, setTopupHistory] = useState<Array<{
+    id: number;
+    user_id: number;
+    username?: string;
+    amount: number;
+    admin_name: string;
+    created_at: string;
+  }>>([]);
 
   useEffect(() => {
     const loadedCoefficients: { [key: number]: number } = {};
@@ -30,7 +38,25 @@ const Admin = () => {
       loadedCoefficients[i] = savedCoeff ? parseFloat(savedCoeff) : 1;
     }
     setCoefficients(loadedCoefficients);
+    loadTopupHistory();
   }, []);
+
+  const loadTopupHistory = async () => {
+    try {
+      const response = await fetch('https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_topup_history' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTopupHistory(data);
+      }
+    } catch (error) {
+      console.error('Failed to load topup history:', error);
+    }
+  };
 
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
@@ -129,23 +155,6 @@ const Admin = () => {
       });
 
       if (response.ok) {
-        const manualBalance = localStorage.getItem(`manual_balance_user${userId}`);
-        const currentManualBalance = manualBalance ? parseFloat(manualBalance) : 0;
-        const newManualBalance = currentManualBalance + amount;
-        localStorage.setItem(`manual_balance_user${userId}`, newManualBalance.toString());
-        
-        const historyKey = `topup_history_user${userId}`;
-        const existingHistory = localStorage.getItem(historyKey);
-        const history = existingHistory ? JSON.parse(existingHistory) : [];
-        
-        history.push({
-          date: new Date().toISOString(),
-          amount: amount,
-          admin: localStorage.getItem('username') || 'admin',
-        });
-        
-        localStorage.setItem(historyKey, JSON.stringify(history));
-        
         toast({
           title: 'Баланс пополнен',
           description: `+${amount} ₽ для пользователя ${userId}`,
@@ -153,8 +162,10 @@ const Admin = () => {
 
         setSelectedUserForTopup(null);
         setTopupAmount('');
+        loadTopupHistory();
       } else {
-        throw new Error('Ошибка пополнения');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка пополнения');
       }
     } catch (error) {
       toast({
@@ -207,9 +218,10 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="timers" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
             <TabsTrigger value="timers">Таймеры</TabsTrigger>
             <TabsTrigger value="users">Пользователи</TabsTrigger>
+            <TabsTrigger value="history">История</TabsTrigger>
             <TabsTrigger value="settings">Настройки</TabsTrigger>
           </TabsList>
 
@@ -354,6 +366,44 @@ const Admin = () => {
                     </Card>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>История пополнений</CardTitle>
+                <CardDescription>Все операции пополнения баланса пользователей</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topupHistory.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">История пополнений пуста</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topupHistory.map((record) => (
+                      <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            Пользователь {record.user_id}
+                            {record.username && ` (${record.username})`}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(record.created_at).toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm text-muted-foreground">
+                            {record.admin_name}
+                          </div>
+                          <div className="font-semibold text-green-600">
+                            +{record.amount.toFixed(2)} ₽
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

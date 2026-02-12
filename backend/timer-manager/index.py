@@ -209,7 +209,7 @@ def handler(event: dict, context) -> dict:
                     cur.execute('''
                         UPDATE active_timers
                         SET balance = %s,
-                            timer_end_date = timer_end_date + INTERVAL '%s minutes',
+                            timer_end_date = timer_end_date + make_interval(mins => %s),
                             updated_at = CURRENT_TIMESTAMP
                         WHERE user_id = %s AND is_active = TRUE
                     ''', (new_balance, additional_minutes, user_id))
@@ -273,47 +273,37 @@ def handler(event: dict, context) -> dict:
                     })
                 }
             
-            elif action == 'add_balance':
+            elif action == 'get_topup_history':
                 user_id = body.get('user_id')
-                amount = float(body.get('amount', 0))
-                admin_name = body.get('admin_name', 'Администратор')
                 
-                cur.execute('''
-                    SELECT balance, coefficient, timer_end_date, is_active 
-                    FROM active_timers 
-                    WHERE user_id = %s AND is_active = TRUE
-                ''', (user_id,))
-                timer = cur.fetchone()
-                
-                if timer:
-                    new_balance = float(timer['balance']) + amount
-                    coefficient = float(timer['coefficient'])
-                    
-                    total_minutes = new_balance / coefficient if coefficient > 0 else 0
-                    new_timer_end = datetime.now() + timedelta(minutes=total_minutes)
-                    
+                if user_id:
                     cur.execute('''
-                        UPDATE active_timers 
-                        SET balance = %s, timer_end_date = %s, updated_at = CURRENT_TIMESTAMP
-                        WHERE user_id = %s AND is_active = TRUE
-                    ''', (new_balance, new_timer_end, user_id))
+                        SELECT id, user_id, amount, admin_name, created_at
+                        FROM topup_history
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC
+                    ''', (user_id,))
                 else:
-                    return {
-                        'statusCode': 404,
-                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                        'body': json.dumps({'error': 'Active timer not found'})
-                    }
+                    cur.execute('''
+                        SELECT th.id, th.user_id, th.amount, th.admin_name, th.created_at, u.username
+                        FROM topup_history th
+                        LEFT JOIN users u ON th.user_id = u.id
+                        ORDER BY th.created_at DESC
+                        LIMIT 100
+                    ''')
                 
-                cur.execute('''
-                    INSERT INTO topup_history (user_id, amount, admin_name)
-                    VALUES (%s, %s, %s)
-                ''', (user_id, amount, admin_name))
-                conn.commit()
+                history = cur.fetchall()
+                result = []
+                for record in history:
+                    record_dict = dict(record)
+                    if record_dict.get('created_at'):
+                        record_dict['created_at'] = record_dict['created_at'].isoformat()
+                    result.append(record_dict)
                 
                 return {
                     'statusCode': 200,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'success': True, 'new_balance': new_balance})
+                    'body': json.dumps(result)
                 }
         
         elif method == 'PUT':
