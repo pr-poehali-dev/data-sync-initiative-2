@@ -1,8 +1,21 @@
 import json
 import os
 from datetime import datetime, timedelta
+from decimal import Decimal
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+def decimal_to_float(obj):
+    '''Конвертирует Decimal в float для JSON сериализации'''
+    if isinstance(obj, dict):
+        return {k: decimal_to_float(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [decimal_to_float(item) for item in obj]
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
 
 def process_deductions(cur, conn):
     '''Автоматическое списание средств с активных таймеров'''
@@ -100,15 +113,7 @@ def handler(event: dict, context) -> dict:
                         'body': json.dumps({'error': 'User not found'})
                     }
                 
-                result = dict(user)
-                if result.get('timer_end_date'):
-                    result['timer_end_date'] = result['timer_end_date'].isoformat()
-                if result.get('last_deduction_time'):
-                    result['last_deduction_time'] = result['last_deduction_time'].isoformat()
-                if result.get('created_at'):
-                    result['created_at'] = result['created_at'].isoformat()
-                if result.get('updated_at'):
-                    result['updated_at'] = result['updated_at'].isoformat()
+                result = decimal_to_float(dict(user))
                     
                 return {
                     'statusCode': 200,
@@ -125,18 +130,7 @@ def handler(event: dict, context) -> dict:
                 ''')
                 users = cur.fetchall()
                 
-                result = []
-                for user in users:
-                    user_dict = dict(user)
-                    if user_dict.get('timer_end_date'):
-                        user_dict['timer_end_date'] = user_dict['timer_end_date'].isoformat()
-                    if user_dict.get('last_deduction_time'):
-                        user_dict['last_deduction_time'] = user_dict['last_deduction_time'].isoformat()
-                    if user_dict.get('created_at'):
-                        user_dict['created_at'] = user_dict['created_at'].isoformat()
-                    if user_dict.get('updated_at'):
-                        user_dict['updated_at'] = user_dict['updated_at'].isoformat()
-                    result.append(user_dict)
+                result = [decimal_to_float(dict(user)) for user in users]
                 
                 return {
                     'statusCode': 200,
@@ -161,9 +155,7 @@ def handler(event: dict, context) -> dict:
                 user = cur.fetchone()
                 conn.commit()
                 
-                result = dict(user)
-                if result.get('created_at'):
-                    result['created_at'] = result['created_at'].isoformat()
+                result = decimal_to_float(dict(user))
                 
                 return {
                     'statusCode': 201,
@@ -230,9 +222,7 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 print(f'[ADD_BALANCE] Transaction committed successfully')
                 
-                result = dict(topup)
-                if result.get('created_at'):
-                    result['created_at'] = result['created_at'].isoformat()
+                result = decimal_to_float(dict(topup))
                 
                 return {
                     'statusCode': 200,
@@ -264,9 +254,7 @@ def handler(event: dict, context) -> dict:
                 timer = cur.fetchone()
                 conn.commit()
                 
-                result = dict(timer)
-                if result.get('timer_end_date'):
-                    result['timer_end_date'] = result['timer_end_date'].isoformat()
+                result = decimal_to_float(dict(timer))
                 
                 return {
                     'statusCode': 201,
@@ -311,12 +299,7 @@ def handler(event: dict, context) -> dict:
                 history = cur.fetchall()
                 print(f'[GET_TOPUP_HISTORY] Found {len(history)} records')
                 
-                result = []
-                for record in history:
-                    record_dict = dict(record)
-                    if record_dict.get('created_at'):
-                        record_dict['created_at'] = record_dict['created_at'].isoformat()
-                    result.append(record_dict)
+                result = [decimal_to_float(dict(record)) for record in history]
                 
                 return {
                     'statusCode': 200,
