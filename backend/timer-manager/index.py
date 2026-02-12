@@ -176,23 +176,31 @@ def handler(event: dict, context) -> dict:
                 amount = float(body.get('amount', 0))
                 admin_name = body.get('admin_name', 'admin')
                 
+                print(f'[ADD_BALANCE] Start: user_id={user_id}, amount={amount}, admin={admin_name}')
+                
                 cur.execute('''
                     SELECT id FROM users WHERE id = %s
                 ''', (user_id,))
                 user = cur.fetchone()
                 
                 if not user:
+                    print(f'[ADD_BALANCE] User {user_id} not found, creating...')
                     cur.execute('''
                         INSERT INTO users (id, username) VALUES (%s, %s)
                     ''', (user_id, f'user{user_id}'))
                     conn.commit()
+                    print(f'[ADD_BALANCE] User {user_id} created')
+                else:
+                    print(f'[ADD_BALANCE] User {user_id} exists')
                 
+                print(f'[ADD_BALANCE] Inserting topup history...')
                 cur.execute('''
                     INSERT INTO topup_history (user_id, amount, admin_name)
                     VALUES (%s, %s, %s)
                     RETURNING id, user_id, amount, admin_name, created_at
                 ''', (user_id, amount, admin_name))
                 topup = cur.fetchone()
+                print(f'[ADD_BALANCE] Topup history created: id={topup["id"]}')
                 
                 cur.execute('''
                     SELECT balance, coefficient FROM active_timers 
@@ -201,10 +209,12 @@ def handler(event: dict, context) -> dict:
                 timer = cur.fetchone()
                 
                 if timer:
+                    print(f'[ADD_BALANCE] Active timer found: balance={timer["balance"]}, coefficient={timer["coefficient"]}')
                     new_balance = float(timer['balance']) + amount
                     coefficient = float(timer['coefficient'])
                     
                     additional_minutes = amount / coefficient if coefficient > 0 else 0
+                    print(f'[ADD_BALANCE] Updating timer: new_balance={new_balance}, additional_minutes={additional_minutes}')
                     
                     cur.execute('''
                         UPDATE active_timers
@@ -213,8 +223,12 @@ def handler(event: dict, context) -> dict:
                             updated_at = CURRENT_TIMESTAMP
                         WHERE user_id = %s AND is_active = TRUE
                     ''', (new_balance, additional_minutes, user_id))
+                    print(f'[ADD_BALANCE] Timer updated successfully')
+                else:
+                    print(f'[ADD_BALANCE] No active timer for user {user_id}')
                 
                 conn.commit()
+                print(f'[ADD_BALANCE] Transaction committed successfully')
                 
                 result = dict(topup)
                 if result.get('created_at'):
@@ -276,6 +290,8 @@ def handler(event: dict, context) -> dict:
             elif action == 'get_topup_history':
                 user_id = body.get('user_id')
                 
+                print(f'[GET_TOPUP_HISTORY] Start: user_id={user_id}')
+                
                 if user_id:
                     cur.execute('''
                         SELECT id, user_id, amount, admin_name, created_at
@@ -293,6 +309,8 @@ def handler(event: dict, context) -> dict:
                     ''')
                 
                 history = cur.fetchall()
+                print(f'[GET_TOPUP_HISTORY] Found {len(history)} records')
+                
                 result = []
                 for record in history:
                     record_dict = dict(record)
@@ -349,10 +367,13 @@ def handler(event: dict, context) -> dict:
         }
         
     except Exception as e:
+        print(f'[ERROR] Exception occurred: {type(e).__name__}: {str(e)}')
+        import traceback
+        print(f'[ERROR] Traceback: {traceback.format_exc()}')
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': str(e)})
+            'body': json.dumps({'error': str(e), 'type': type(e).__name__})
         }
     finally:
         if 'cur' in locals():

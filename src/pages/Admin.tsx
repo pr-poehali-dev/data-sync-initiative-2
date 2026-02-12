@@ -43,18 +43,29 @@ const Admin = () => {
 
   const loadTopupHistory = async () => {
     try {
+      console.log('[LOAD_TOPUP_HISTORY] Requesting history...');
       const response = await fetch('https://functions.poehali.dev/a23898cb-270c-4d21-8199-e4efe343c233', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get_topup_history' })
       });
 
+      console.log('[LOAD_TOPUP_HISTORY] Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[LOAD_TOPUP_HISTORY] Data loaded:', data.length, 'records');
         setTopupHistory(data);
+      } else {
+        const errorText = await response.text();
+        console.error('[LOAD_TOPUP_HISTORY] Error response:', errorText);
       }
-    } catch (error) {
-      console.error('Failed to load topup history:', error);
+    } catch (error: unknown) {
+      console.error('[LOAD_TOPUP_HISTORY] Exception:', error);
     }
   };
 
@@ -164,16 +175,30 @@ const Admin = () => {
         setTopupAmount('');
         loadTopupHistory();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка пополнения');
+        const errorText = await response.text();
+        console.error('[ADD_BALANCE] Response error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('[ADD_BALANCE] Exception:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Не удалось пополнить баланс';
       toast({
         title: 'Ошибка',
-        description: 'Не удалось пополнить баланс',
+        description: errorMessage,
         variant: 'destructive',
       });
-      console.error(error);
     }
   };
 
@@ -378,7 +403,7 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 {topupHistory.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">История пополнений пуста</p>
+                  <div className="text-center text-muted-foreground py-8">История пополнений пуста</div>
                 ) : (
                   <div className="space-y-2">
                     {topupHistory.map((record) => (
